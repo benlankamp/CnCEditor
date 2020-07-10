@@ -188,6 +188,7 @@ namespace CnCEditor.FileFormats
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
+
             if (disposing)
             {
                 if (baseStream != null)

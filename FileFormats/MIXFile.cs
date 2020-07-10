@@ -174,6 +174,7 @@ namespace CnCEditor.FileFormats
                         rawStream.Dispose();
                     }
 
+                    this.rawStream = null;
                     this.rawFile = null;
                 }
 
