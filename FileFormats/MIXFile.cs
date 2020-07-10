@@ -9,7 +9,7 @@ namespace CnCEditor.FileFormats
 {
     public partial class MIXFile
     {
-        public bool IsValid = false;
+        public bool IsValid;
 
         public string FileName;
 
@@ -25,27 +25,25 @@ namespace CnCEditor.FileFormats
         public bool IsDisposed { get; private set; }
 
         /* Private */
-        private const string PubKey = "AihRvNoIbTn85FZRYNZRcT+i6KpU+maCsEqr3Q5q+LDB5tH7Tz2qQ38V";
-
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        private struct AlternateHeader {
-            public Int16 First;
-            public Int16 Second;
+        private readonly struct AlternateHeader {
+            public readonly Int16 First;
+            public readonly Int16 Second;
         };
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        private struct FileHeader
+        private readonly struct FileHeader
         {
-            public Int16 Count;     // file count
-            public Int32 Size;       // total size of all embedded files
+            public readonly Int16 Count;     // file count
+            public readonly Int32 Size;       // total size of all embedded files
         };
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        private struct FileIndex
+        private readonly struct FileIndex
         {
-            public UInt32 CRC;
-            public UInt32 Offset;
-            public UInt32 Size;
+            public readonly UInt32 CRC;
+            public readonly UInt32 Offset;
+            public readonly UInt32 Size;
         };
 
         private byte[] rawFile;
@@ -53,7 +51,7 @@ namespace CnCEditor.FileFormats
 
         private FileHeader fileHeader;
 
-        private long dataStart = 0;
+        private long dataStart;
 
         // read from disk
         public MIXFile(string fileName)
@@ -110,8 +108,7 @@ namespace CnCEditor.FileFormats
 
         private void ParseFile()
         { 
-            AlternateHeader alternate;
-            alternate = rawStream.ByteToType<AlternateHeader>();
+            AlternateHeader alternate = rawStream.ByteToType<AlternateHeader>();
 
             if (alternate.First == 0)
             {
@@ -135,20 +132,21 @@ namespace CnCEditor.FileFormats
                     this.IsValid = true;
 
                     // parse the index
-                    FileIndex fileIndex;
-
                     for (int f = 0; f < fileHeader.Count; f++)
                     {
                         // read index
-                        fileIndex = fileIndexStream.ByteToType<FileIndex>();
+                        FileIndex fileIndex = fileIndexStream.ByteToType<FileIndex>();
 
                         // find file in known names
-                        if (MIXDatabase.ValidFileNames.ContainsKey((uint)fileIndex.CRC))
+                        if (MIXDatabase.ValidFileNames.ContainsKey(fileIndex.CRC))
                         {
-                            SubFile newSubFile = new SubFile();
-                            newSubFile.Name = MIXDatabase.ValidFileNames[(uint)fileIndex.CRC];
-                            newSubFile.Offset = fileIndex.Offset;
-                            newSubFile.Size = fileIndex.Size;
+                            SubFile newSubFile = new SubFile
+                            {
+                                Name = MIXDatabase.ValidFileNames[fileIndex.CRC],
+                                Offset = fileIndex.Offset,
+                                Size = fileIndex.Size
+                            };
+
                             Files.Add(newSubFile);
                         }
                     }
@@ -266,7 +264,7 @@ namespace CnCEditor.FileFormats
                             chars.Clear();
 
                             // Skip comment
-                            while ((c = s.ReadUInt8()) != 0) { }
+                            while (s.ReadUInt8() != 0) { }
                         }
                     }
                 }

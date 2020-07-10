@@ -2,7 +2,6 @@
 using ScintillaNET;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -33,7 +32,7 @@ namespace CnCEditor
             textFileViewer.Styles[Style.Properties.DefVal].ForeColor = Color.Gray;
         }
 
-        private void openToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -118,7 +117,7 @@ namespace CnCEditor
             }
         }
 
-        private void exitToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Application.Exit();
         }
@@ -188,7 +187,7 @@ namespace CnCEditor
             textFileViewer.AutomaticFold = (AutomaticFold.Show | AutomaticFold.Click | AutomaticFold.Change);
         }
 
-        private void closeToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private void closeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             while(openFiles.Any() ) { 
                 openFiles.Last().Value.Dispose();

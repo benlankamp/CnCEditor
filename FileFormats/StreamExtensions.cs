@@ -96,13 +96,12 @@ namespace CnCEditor.FileFormats
         private readonly long length;
         private long position;
 
-        private uint originOffset;
+        private readonly uint originOffset;
 
         public SubStream(Stream baseStream, uint offset, uint length)
         {
             if (baseStream == null) throw new ArgumentNullException("Base stream is null");
             if (!baseStream.CanRead) throw new ArgumentException("Cannot read from base stream");
-            if (offset < 0) throw new ArgumentOutOfRangeException("Offset is invalid");
 
             this.baseStream = baseStream;
 
@@ -160,7 +159,7 @@ namespace CnCEditor.FileFormats
                 CheckDisposed();
                 return position;
             }
-            set { throw new NotSupportedException(); }
+            set => throw new NotSupportedException();
         }
 
         public override long Seek(long offset, SeekOrigin origin)
