@@ -49,8 +49,7 @@ namespace CnCEditor.FileFormats
         };
 
         private byte[] rawFile;
-        private MemoryStream rawStream;
-        private BinaryReader rawReader;
+        private Stream rawStream;
 
         private FileHeader fileHeader;
 
@@ -64,15 +63,28 @@ namespace CnCEditor.FileFormats
             FileName = new FileInfo(fileName).Name;
 
             this.rawFile = File.ReadAllBytes(fileName);
+            this.rawStream = new MemoryStream(this.rawFile);
+
             this.ParseFile();
         }
 
-        // read from byte array
+        // get from raw bytes
         public MIXFile(byte[] rawFile, string fileName)
         {
             FileName = fileName;
 
             this.rawFile = rawFile;
+            this.rawStream = new MemoryStream(this.rawFile);
+
+            this.ParseFile();
+        }
+
+        // read from substream
+        public MIXFile(SubStream rawStream, string fileName)
+        {
+            FileName = fileName;
+            this.rawStream = rawStream;
+
             this.ParseFile();
         }
 
@@ -86,16 +98,18 @@ namespace CnCEditor.FileFormats
         {
             if ( Files.Count( x => x.Name == fileName ) == 0 ) return null;
 
-            var file = Files.Single(x => x.Name == fileName);
+            SubFile file = Files.Single(x => x.Name == fileName);
+            return GetFile(file);
+        }
+
+        public SubStream GetFileAsStream(SubFile file)
+        {
             rawStream.Seek(dataStart + file.Offset, SeekOrigin.Begin);
-            return rawStream.ReadBytes((int)file.Size);
+            return new SubStream(this.rawStream, (uint)rawStream.Position, file.Size);
         }
 
         private void ParseFile()
         { 
-            rawStream = new MemoryStream(this.rawFile);
-            rawReader = new BinaryReader(this.rawStream);
-
             AlternateHeader alternate;
             alternate = rawStream.ByteToType<AlternateHeader>();
 
@@ -116,27 +130,27 @@ namespace CnCEditor.FileFormats
 
                 fileHeader = fileIndexStream.ByteToType<FileHeader>();
 
-                if ( rawStream.Length == dataStart + fileHeader.Size )
+                if (rawStream.Length >= dataStart + fileHeader.Size)
                 {
                     this.IsValid = true;
-                }
 
-                // parse the index
-                FileIndex fileIndex;
+                    // parse the index
+                    FileIndex fileIndex;
 
-                for (int f = 0; f < fileHeader.Count; f++)
-                {
-                    // read index
-                    fileIndex = fileIndexStream.ByteToType<FileIndex>();
-
-                    // find file in known names
-                    if (MIXDatabase.ValidFileNames.ContainsKey((uint)fileIndex.CRC))
+                    for (int f = 0; f < fileHeader.Count; f++)
                     {
-                        SubFile newSubFile = new SubFile();
-                        newSubFile.Name = MIXDatabase.ValidFileNames[(uint)fileIndex.CRC];
-                        newSubFile.Offset = fileIndex.Offset;
-                        newSubFile.Size = fileIndex.Size;
-                        Files.Add(newSubFile);
+                        // read index
+                        fileIndex = fileIndexStream.ByteToType<FileIndex>();
+
+                        // find file in known names
+                        if (MIXDatabase.ValidFileNames.ContainsKey((uint)fileIndex.CRC))
+                        {
+                            SubFile newSubFile = new SubFile();
+                            newSubFile.Name = MIXDatabase.ValidFileNames[(uint)fileIndex.CRC];
+                            newSubFile.Offset = fileIndex.Offset;
+                            newSubFile.Size = fileIndex.Size;
+                            Files.Add(newSubFile);
+                        }
                     }
                 }
             }
@@ -154,12 +168,13 @@ namespace CnCEditor.FileFormats
             {
                 if (disposing)
                 {
-
-                    if (rawReader != null)
+                    if (rawStream != null)
                     {
-                        rawReader.Close();
-                        rawReader.Dispose();
+                        rawStream.Close();
+                        rawStream.Dispose();
                     }
+
+                    this.rawFile = null;
                 }
 
                 IsDisposed = true;
@@ -171,7 +186,7 @@ namespace CnCEditor.FileFormats
             rawStream.Seek(offset, SeekOrigin.Begin);
 
             // Decrypt blowfish key
-            var keyblock = rawReader.ReadBytes(80);
+            var keyblock = rawStream.ReadBytes(80);
             var blowfishKey = new BlowfishKeyProvider().DecryptKey(keyblock);
             var fish = new Blowfish(blowfishKey);
 
@@ -206,7 +221,7 @@ namespace CnCEditor.FileFormats
 
             var ret = new uint[2 * count];
             for (var i = 0; i < ret.Length; i++)
-                ret[i] = rawReader.ReadUInt32();
+                ret[i] = rawStream.ReadUInt32();
 
             return ret;
         }

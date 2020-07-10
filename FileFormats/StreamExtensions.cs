@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CnCEditor.FileFormats
 {
@@ -19,7 +15,7 @@ namespace CnCEditor.FileFormats
 		 * information, see COPYING.
 		 */
 
-		public static T ByteToType<T>(this MemoryStream stream)
+		public static T ByteToType<T>(this Stream stream)
         {
             int strucSize = Marshal.SizeOf(typeof(T));
 
@@ -93,4 +89,118 @@ namespace CnCEditor.FileFormats
 			return BitConverter.ToInt32(s.ReadBytes(4), 0);
 		}
 	}
+
+    public class SubStream : Stream
+    {
+        private Stream baseStream;
+        private readonly long length;
+        private long position;
+
+        private uint originOffset;
+
+        public SubStream(Stream baseStream, uint offset, uint length)
+        {
+            if (baseStream == null) throw new ArgumentNullException("Base stream is null");
+            if (!baseStream.CanRead) throw new ArgumentException("Cannot read from base stream");
+            if (offset < 0) throw new ArgumentOutOfRangeException("Offset is invalid");
+
+            this.baseStream = baseStream;
+
+            this.length = length;
+            this.originOffset = offset;
+            this.position = 0;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            CheckDisposed();
+
+            long remaining = length - position;
+            if (remaining <= 0) return 0;
+            if (remaining < count) count = (int)remaining;
+
+            // seek offset
+            baseStream.Seek( this.originOffset + this.position, SeekOrigin.Begin );
+
+            int read = baseStream.Read(buffer, 0, count);
+            position += read;
+
+            return read;
+        }
+
+        private void CheckDisposed()
+        {
+            if (baseStream == null) throw new ObjectDisposedException(GetType().Name);
+        }
+
+        public override long Length
+        {
+            get { CheckDisposed(); return length; }
+        }
+
+        public override bool CanRead
+        {
+            get { CheckDisposed(); return true; }
+        }
+
+        public override bool CanWrite
+        {
+            get { CheckDisposed(); return false; }
+        }
+
+        public override bool CanSeek
+        {
+            get { CheckDisposed(); return false; }
+        }
+
+        public override long Position
+        {
+            get
+            {
+                CheckDisposed();
+                return position;
+            }
+            set { throw new NotSupportedException(); }
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            switch (origin)
+            {
+                case SeekOrigin.Begin:
+                    this.position = offset;
+                    return this.baseStream.Seek(this.originOffset + offset, SeekOrigin.Begin);
+                case SeekOrigin.Current:
+                    this.position += offset;
+                    return this.baseStream.Seek(offset, SeekOrigin.Current);
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+        public override void Flush()
+        {
+            CheckDisposed(); baseStream.Flush();
+        }
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing)
+            {
+                if (baseStream != null)
+                {
+                    try { baseStream.Dispose(); }
+                    catch { }
+                    baseStream = null;
+                }
+            }
+        }
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
