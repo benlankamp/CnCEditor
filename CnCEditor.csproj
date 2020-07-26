@@ -55,21 +55,27 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Encryption\Blowfish.cs" />
-    <Compile Include="Encryption\BlowfishKeyprovider.cs" />
-    <Compile Include="Encryption\CRC32.cs" />
+    <Compile Include="FileFormats\Encryption\Blowfish.cs" />
+    <Compile Include="FileFormats\Encryption\BlowfishKeyprovider.cs" />
+    <Compile Include="FileFormats\Encryption\CRC32.cs" />
     <Compile Include="FileFormats\MIXFile.cs" />
     <Compile Include="FileFormats\MIXFile_Hash.cs" />
     <Compile Include="FileFormats\StreamExtensions.cs" />
-    <Compile Include="MainForm.cs">
+    <Compile Include="FileFormats\TilesetFile.cs" />
+    <Compile Include="GUI\ComponentLocking.cs" />
+    <Compile Include="GUI\FilePreviews.cs" />
+    <Compile Include="GUI\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="MainForm.Designer.cs">
+    <Compile Include="GUI\MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
     <Compile Include="CncEditor.cs" />
+    <Compile Include="GUI\MainForm_FileHandling.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="MainForm.resx">
+    <EmbeddedResource Include="GUI\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -98,5 +104,6 @@
   <ItemGroup>
     <None Include="README.md" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

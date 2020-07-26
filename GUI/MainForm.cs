@@ -1,13 +1,16 @@
 ﻿using CnCEditor.FileFormats;
 using ScintillaNET;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using CnCEditor.GUI;
 
 namespace CnCEditor
 {
@@ -30,46 +33,6 @@ namespace CnCEditor
             textFileViewer.Styles[Style.Properties.Key].ForeColor = Color.FromArgb(163, 21, 21);
             textFileViewer.Styles[Style.Properties.Comment].ForeColor = Color.FromArgb(0, 128, 0);
             textFileViewer.Styles[Style.Properties.DefVal].ForeColor = Color.Gray;
-        }
-
-        private void openToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (openFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                FileInfo selectedFile = new FileInfo(openFileDialog.FileName);
-
-                switch (selectedFile.Extension.ToLower())
-                {
-                    case ".mix":
-                        MIXFile mixFile;
-
-                        if (!openFiles.ContainsKey(openFileDialog.FileName))
-                        {
-                            mixFile = new MIXFile(openFileDialog.FileName);
-                            openFiles.Add(openFileDialog.FileName, mixFile);
-                        } 
-                        else
-                        {
-                            mixFile = openFiles[openFileDialog.FileName];
-                        }
-
-                        if (!mixFile.IsValid)
-                        {
-                            MessageBox.Show("Invalid MIX file!", "Error loading file", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        }
-
-                        UpdateMemoryUsage();
-
-                        TreeNode rootNode = new TreeNode(openFileDialog.FileName);
-                        rootNode.ImageIndex = 0;
-                        SolveFiles( ref mixFile, rootNode);
-                        treeItems.Nodes.Add(rootNode);
-
-                        treeItems.Sort();
-
-                        break;
-                }
-            }
         }
 
         private void SolveFiles( ref MIXFile mixFile, TreeNode rootNode )
@@ -96,6 +59,7 @@ namespace CnCEditor
                         }
 
                         TreeNode subRootNode = new TreeNode(selectedFile.Name);
+                        subRootNode.Tag = selectedFile.Name;
                         subRootNode.SelectedImageIndex = 0;
                         subRootNode.ImageIndex = 0;
 
@@ -105,13 +69,6 @@ namespace CnCEditor
 
                         UpdateMemoryUsage();
 
-                        break;
-                    default:
-                        var newNode = new TreeNode(file.Name);
-                        newNode.Tag = ( MixFile: mixFile.FileName, FileName: file.Name );
-                        newNode.SelectedImageIndex = 1;
-                        newNode.ImageIndex = 1;
-                        rootNode.Nodes.Add(newNode);
                         break;
                 }
             }
@@ -138,19 +95,61 @@ namespace CnCEditor
         {
             if(e.Node.Tag != null)
             {
-                ( string MixFile, string FileName ) fileTag = ((string MixFile, string FileName))e.Node.Tag;
+                string mixFile = (string)e.Node.Tag;
 
-                var fileInfo = new FileInfo(fileTag.FileName);
+                var fileInfo = new FileInfo(mixFile);
 
-                if(fileInfo.Extension == ".ini")
+                switch (fileInfo.Extension)
                 {
-                    // get raw file
-                    byte[] rawFile = openFiles[fileTag.MixFile].GetFile(fileTag.FileName);
+                    case ".mix":
+                        listContainerContents.Items.Clear();
+                        imageFilePreviews.Images.Clear();
 
-                    textFileViewer.Lexer = Lexer.Properties;
-                    textFileViewer.Text = Encoding.UTF8.GetString(rawFile);
+                        listContainerContents.StartSuspend();
 
-                    CalculateFolding();
+                        // show contents of container
+                        foreach (MIXFile.SubFile subFile in openFiles[mixFile].Files)
+                        {
+                            var subFileInfo = new FileInfo(subFile.Name);
+                            switch (subFileInfo.Extension)
+                            {
+                                case ".sno":
+                                case ".tem":
+                                case ".int":
+                                    // read file
+                                    var rawFile = new TilesetFile(openFiles[mixFile].GetFile(subFile.Name));
+
+                                    if (rawFile.tileImage != null)
+                                    {
+                                        // use the preview image
+                                        imageFilePreviews.Images.Add( FilePreviews.CenteredBitmap(rawFile.tileImage) );
+
+                                        listContainerContents.Items.Add(new ListViewItem()
+                                        {
+                                            Text = subFileInfo.Name,
+                                            ImageIndex = imageFilePreviews.Images.Count
+                                        });
+
+                                        break;
+                                    }
+
+                                    goto default;
+                                default:
+                                    listContainerContents.Items.Add(new ListViewItem()
+                                    {
+                                        Text = subFileInfo.Name,
+                                        Tag = ( MixFile: mixFile, FileName: subFile.Name )
+                                    });
+                                    break;
+                            }
+                        }
+
+                        listContainerContents.LargeImageList = imageFilePreviews;
+                        listContainerContents.Sorting = SortOrder.Ascending;
+
+                        listContainerContents.EndSuspend();
+
+                        break;
                 }
             }
         }
@@ -201,6 +200,37 @@ namespace CnCEditor
             textFileViewer.Text = "";
 
             UpdateMemoryUsage();
+        }
+
+        private void containerFileMIXMEGToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OpenContainerFile();
+        }
+
+        private void listContainerContents_DoubleClick(object sender, EventArgs e)
+        {
+            if (listContainerContents.SelectedItems.Count == 1)
+            {
+                ListViewItem selectedItem = listContainerContents.SelectedItems[0];
+                if (selectedItem.Tag != null)
+                {
+                    (string mixFile, string listFileName) = (ValueTuple<string, string>) (selectedItem.Tag);
+
+                    var subFileInfo = new FileInfo(listFileName);
+                    switch (subFileInfo.Extension)
+                    {
+                        case ".ini":
+                            byte[] rawFile = openFiles[mixFile].GetFile(listFileName);
+
+                            textFileViewer.Lexer = Lexer.Properties;
+                            textFileViewer.Text = Encoding.UTF8.GetString(rawFile);
+
+                            CalculateFolding();
+
+                            break;
+                    }
+                }
+            }
         }
     }
 }

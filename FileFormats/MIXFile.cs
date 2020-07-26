@@ -54,14 +54,21 @@ namespace CnCEditor.FileFormats
         private long dataStart;
 
         // read from disk
-        public MIXFile(string fileName)
+        public MIXFile(string fileName, bool readInMemory = false)
         {
             if (!File.Exists(fileName)) return;
 
             FileName = new FileInfo(fileName).Name;
 
-            this.rawFile = File.ReadAllBytes(fileName);
-            this.rawStream = new MemoryStream(this.rawFile);
+            if (!readInMemory)
+            {
+                this.rawStream = new FileStream(fileName, FileMode.Open);
+            }
+            else
+            {
+                this.rawFile = File.ReadAllBytes(fileName);
+                this.rawStream = new MemoryStream(this.rawFile);
+            }
 
             this.ParseFile();
         }
