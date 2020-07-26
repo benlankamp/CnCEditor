@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -113,9 +114,13 @@ namespace CnCEditor.FileFormats
 
                     // create bitmap for the patch
                     this.tileImage = new Bitmap(tilePatchWidth, tilePatchHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    BitmapData tileImageData = this.tileImage.LockBits(new Rectangle(0, 0, this.tileImage.Width, this.tileImage.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+                    int stride = tileImageData.Stride;
 
                     // go through all tiles
                     int tileX = 0, tileY = 0;
+                    int xPos, yPos;
+
                     byte[] rawImage = new byte[tileSize];
 
                     for (int tileNr = 0; tileNr < tileSetHeader.count; tileNr++)
@@ -140,8 +145,22 @@ namespace CnCEditor.FileFormats
                             {
                                 for (int col = 0; col < tileSetHeader.width; col++)
                                 {
+                                    xPos = tileX + col;
+                                    yPos = tileY + row;
+
+                                    unsafe
+                                    {
+                                        byte* ptr = (byte*)tileImageData.Scan0;
+
+                                        ptr[(xPos * 4) + yPos * stride] = Palette[rawImage[idx]].B;
+                                        ptr[(xPos * 4) + yPos * stride + 1] = Palette[rawImage[idx]].G;
+                                        ptr[(xPos * 4) + yPos * stride + 2] = Palette[rawImage[idx]].R;
+                                        ptr[(xPos * 4) + yPos * stride + 3] = Palette[rawImage[idx]].A;
+                                    }
+
                                     // translate index to RGB
-                                    tileImage.SetPixel(tileX + col, tileY + row, Palette[rawImage[idx]]);
+                                    //tileImage.SetPixel(tileX + col, tileY + row, );
+
                                     idx++;
                                 }
                             }
@@ -154,6 +173,8 @@ namespace CnCEditor.FileFormats
                             tileY += tileSetHeader.height;
                         }
                     }
+
+                    this.tileImage.UnlockBits(tileImageData);
                 }
             }
         }
